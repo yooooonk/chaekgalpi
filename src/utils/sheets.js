@@ -1,0 +1,138 @@
+/**
+ * Google Sheets API v4 유틸리티
+ *
+ * 시트 구조:
+ *   - "_meta" 탭: A열에 카테고리 이름 목록
+ *   - 카테고리 탭: A=문장, B=벡터(JSON), C=날짜
+ */
+
+const BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets'
+
+function authHeader(token) {
+  return { Authorization: `Bearer ${token}` }
+}
+
+// ─── 스프레드시트 초기화 ─────────────────────────────────────────────────────
+
+/**
+ * 새 스프레드시트를 생성하고 _meta 시트를 추가한다.
+ */
+export async function createSpreadsheet(token) {
+  const res = await fetch(`${BASE_URL}`, {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      properties: { title: '책갈피 데이터' },
+      sheets: [
+        { properties: { title: '_meta' } },
+        { properties: { title: '기본' } },
+      ],
+    }),
+  })
+  if (!res.ok) throw new Error(`스프레드시트 생성 실패: ${res.status}`)
+  const data = await res.json()
+  // _meta에 헤더 + 첫 카테고리 기록
+  await appendRows(token, data.spreadsheetId, '_meta', [['기본']])
+  return data.spreadsheetId
+}
+
+// ─── 카테고리(시트 탭) 관리 ───────────────────────────────────────────────────
+
+export async function getCategories(token, spreadsheetId) {
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}?fields=sheets.properties.title`, {
+    headers: authHeader(token),
+  })
+  if (!res.ok) throw new Error(`카테고리 조회 실패: ${res.status}`)
+  const data = await res.json()
+  return data.sheets
+    .map((s) => s.properties.title)
+    .filter((t) => t !== '_meta')
+}
+
+export async function addCategory(token, spreadsheetId, name) {
+  // 시트 추가
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{ addSheet: { properties: { title: name } } }],
+    }),
+  })
+  if (!res.ok) throw new Error(`카테고리 추가 실패: ${res.status}`)
+  // _meta에도 기록
+  await appendRows(token, spreadsheetId, '_meta', [[name]])
+}
+
+export async function deleteCategory(token, spreadsheetId, name) {
+  // 시트 ID 조회
+  const infoRes = await fetch(`${BASE_URL}/${spreadsheetId}?fields=sheets.properties`, {
+    headers: authHeader(token),
+  })
+  if (!infoRes.ok) throw new Error(`시트 정보 조회 실패`)
+  const info = await infoRes.json()
+  const sheet = info.sheets.find((s) => s.properties.title === name)
+  if (!sheet) throw new Error(`"${name}" 카테고리를 찾을 수 없습니다`)
+  const sheetId = sheet.properties.sheetId
+
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}:batchUpdate`, {
+    method: 'POST',
+    headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      requests: [{ deleteSheet: { sheetId } }],
+    }),
+  })
+  if (!res.ok) throw new Error(`카테고리 삭제 실패: ${res.status}`)
+}
+
+// ─── 행 읽기/쓰기 ─────────────────────────────────────────────────────────────
+
+export async function appendRows(token, spreadsheetId, sheetName, rows) {
+  const range = encodeURIComponent(`${sheetName}!A1`)
+  const res = await fetch(
+    `${BASE_URL}/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
+    {
+      method: 'POST',
+      headers: { ...authHeader(token), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ values: rows }),
+    },
+  )
+  if (!res.ok) throw new Error(`행 추가 실패: ${res.status}`)
+}
+
+export async function getRows(token, spreadsheetId, sheetName) {
+  const range = encodeURIComponent(`${sheetName}!A:C`)
+  const res = await fetch(`${BASE_URL}/${spreadsheetId}/values/${range}`, {
+    headers: authHeader(token),
+  })
+  if (!res.ok) throw new Error(`데이터 조회 실패: ${res.status}`)
+  const data = await res.json()
+  return data.values || []
+}
+
+/**
+ * 특정 카테고리의 모든 행을 파싱해 반환
+ * @returns {Array<{text, vector, date}>}
+ */
+export function parseRows(rows, category) {
+  return rows
+    .filter((r) => r[0] && r[1])
+    .map((r) => ({
+      text: r[0],
+      vector: JSON.parse(r[1]),
+      date: r[2] || '',
+      category,
+    }))
+}
+
+/**
+ * 모든 카테고리 데이터를 한꺼번에 로드
+ */
+export async function loadAllData(token, spreadsheetId, categories) {
+  const results = await Promise.all(
+    categories.map(async (cat) => {
+      const rows = await getRows(token, spreadsheetId, cat)
+      return parseRows(rows, cat)
+    }),
+  )
+  return results.flat()
+}
