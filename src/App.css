@@ -160,11 +160,14 @@
   border-bottom: 2px solid transparent;
   margin-bottom: -1px;
   transition: color .15s, border-color .15s;
+  text-decoration: none;
+  cursor: pointer;
 }
 
 .tab:hover { color: var(--color-text); }
 
-.tab-active {
+.tab-active,
+.tab.active {
   color: var(--color-accent);
   border-bottom-color: var(--color-accent);
 }
@@ -389,6 +392,21 @@
   color: var(--color-accent);
 }
 
+.result-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 100px;
+}
+.badge-tag {
+  background: rgba(92,107,192,.12);
+  color: var(--color-accent);
+}
+.badge-keyword {
+  background: rgba(56,161,105,.12);
+  color: var(--color-success);
+}
+
 /* ── 카테고리 관리 ────────────────────────────────────── */
 .category-manager { display: flex; flex-direction: column; gap: 16px; }
 
@@ -418,6 +436,71 @@
 }
 
 .category-add-form .search-input { flex: 1; }
+
+/* ── 목록 ─────────────────────────────────────────────── */
+.sentence-list { display: flex; flex-direction: column; gap: 20px; }
+
+.list-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.list-cat-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cat-tab {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 100px;
+  padding: 5px 14px;
+  font-size: 13px;
+  color: var(--color-text-muted);
+  transition: all .15s;
+}
+
+.cat-tab:hover {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+}
+
+.cat-tab-active {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: #fff;
+}
+
+.list-group { display: flex; flex-direction: column; gap: 10px; }
+
+.list-group-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.list-group-count {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 100px;
+  font-weight: 500;
+}
+
+/* ── 인피니티 스크롤 ───────────────────────────────────── */
+.list-total {
+  text-align: center;
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 16px 0 4px;
+}
 
 /* ── 모바일 ───────────────────────────────────────────── */
 @media (max-width: 520px) {
