@@ -4,6 +4,8 @@ export default function SearchBar({ categories, onSearch, disabled }) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('__all__')
 
+  const isTagSearch = query.trim().startsWith('#')
+
   function handleSubmit(e) {
     e.preventDefault()
     if (!query.trim()) return
@@ -17,7 +19,7 @@ export default function SearchBar({ categories, onSearch, disabled }) {
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="검색어를 입력하세요"
+        placeholder="#태그 또는 검색어"
         disabled={disabled}
       />
       <select

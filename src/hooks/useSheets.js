@@ -85,9 +85,10 @@ export function useSheets(token) {
   )
 
   const saveEntry = useCallback(
-    async (text, vector, category) => {
+    async (text, vector, category, tags = []) => {
       const date = new Date().toISOString().split('T')[0]
-      await appendRows(token, spreadsheetId, category, [[text, JSON.stringify(vector), date]])
+      const tagsStr = tags.join(',')
+      await appendRows(token, spreadsheetId, category, [[text, JSON.stringify(vector), date, tagsStr]])
     },
     [token, spreadsheetId],
   )

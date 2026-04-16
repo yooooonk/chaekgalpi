@@ -1,22 +1,56 @@
 import { useState } from 'react'
 
+function normalizeTag(raw) {
+  return raw.replace(/^#+/, '').trim()
+}
+
 export default function SaveForm({ categories, onSave, disabled }) {
   const [text, setText] = useState('')
+  const [tagInput, setTagInput] = useState('')
+  const [tags, setTags] = useState([])
   const [category, setCategory] = useState(categories[0] || '')
   const [saving, setSaving] = useState(false)
 
-  // 카테고리 목록이 바뀌면 선택값도 초기화
   if (categories.length > 0 && !categories.includes(category)) {
     setCategory(categories[0])
+  }
+
+  function commitTag() {
+    const name = normalizeTag(tagInput)
+    if (name && !tags.includes(name)) {
+      setTags([...tags, name])
+    }
+    setTagInput('')
+  }
+
+  function handleTagKeyDown(e) {
+    if (e.isComposing || e.nativeEvent?.isComposing) return
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      commitTag()
+    } else if (e.key === 'Backspace' && tagInput === '' && tags.length > 0) {
+      setTags(tags.slice(0, -1))
+    }
+  }
+
+  function removeTag(tag) {
+    setTags(tags.filter((t) => t !== tag))
   }
 
   async function handleSubmit(e) {
     e.preventDefault()
     if (!text.trim() || saving) return
+    // 입력 중인 태그도 함께 저장
+    const finalTags = [...tags]
+    const pending = normalizeTag(tagInput)
+    if (pending && !finalTags.includes(pending)) finalTags.push(pending)
+
     setSaving(true)
     try {
-      await onSave(text.trim(), category)
+      await onSave(text.trim(), category, finalTags)
       setText('')
+      setTagInput('')
+      setTags([])
     } finally {
       setSaving(false)
     }
@@ -32,6 +66,31 @@ export default function SaveForm({ categories, onSave, disabled }) {
         rows={4}
         disabled={disabled || saving}
       />
+      <div className="tag-input-box">
+        {tags.map((t) => (
+          <span key={t} className="tag tag-removable">
+            #{t}
+            <button
+              type="button"
+              className="tag-remove"
+              onClick={() => removeTag(t)}
+              disabled={disabled || saving}
+            >
+              ×
+            </button>
+          </span>
+        ))}
+        <input
+          className="tag-input"
+          type="text"
+          value={tagInput}
+          onChange={(e) => setTagInput(e.target.value)}
+          onKeyDown={handleTagKeyDown}
+          onBlur={() => setTimeout(commitTag, 100)}
+          placeholder={tags.length === 0 ? '#태그 입력 후 스페이스 또는 엔터' : ''}
+          disabled={disabled || saving}
+        />
+      </div>
       <div className="save-form-footer">
         <select
           className="category-select"

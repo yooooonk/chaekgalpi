@@ -72,14 +72,14 @@ export default function App() {
     setTimeout(() => setNotification(null), 3000)
   }
 
-  async function handleSave(text, category) {
+  async function handleSave(text, category, tags = []) {
     if (modelStatus !== 'ready') {
       notify('모델 로딩 중입니다. 잠시 후 다시 시도하세요.', 'error')
       return
     }
     try {
       const vector = await embed(text, 'passage')
-      await sheets.saveEntry(text, vector, category)
+      await sheets.saveEntry(text, vector, category, tags)
       notify(`"${category}"에 저장했습니다.`)
     } catch (e) {
       notify(e.message, 'error')
@@ -87,16 +87,33 @@ export default function App() {
   }
 
   async function handleSearch(query, category) {
-    if (modelStatus !== 'ready') {
-      notify('모델 로딩 중입니다. 잠시 후 다시 시도하세요.', 'error')
-      return
-    }
+    const isTagSearch = query.startsWith('#')
+
     setSearching(true)
     setResults(null)
     try {
-      const queryVec = await embed(query, 'query')
       const cats = category ? [category] : sheets.categories
       const allData = await sheets.loadAll(cats)
+
+      if (isTagSearch) {
+        // 해시태그 검색: #태그1 #태그2 → AND 조건
+        const searchTags = query
+          .split(/\s+/)
+          .map((t) => t.replace(/^#/, '').trim().toLowerCase())
+          .filter(Boolean)
+        const filtered = allData.filter((item) =>
+          searchTags.every((st) => item.tags?.map((t) => t.toLowerCase()).includes(st)),
+        )
+        setResults(filtered)
+        return
+      }
+
+      // 시맨틱 검색
+      if (modelStatus !== 'ready') {
+        notify('모델 로딩 중입니다. 잠시 후 다시 시도하세요.', 'error')
+        return
+      }
+      const queryVec = await embed(query, 'query')
       const ranked = rankBySimilarity(queryVec, allData, 20)
       setResults(ranked)
     } catch (e) {

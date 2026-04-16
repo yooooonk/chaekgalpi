@@ -14,10 +14,19 @@ export default function SearchResults({ results, searching }) {
       {results.map((item, i) => (
         <li key={i} className="result-item">
           <div className="result-text">{item.text}</div>
+          {item.tags?.length > 0 && (
+            <div className="result-tags">
+              {item.tags.map((t) => (
+                <span key={t} className="tag">#{t}</span>
+              ))}
+            </div>
+          )}
           <div className="result-meta">
             <span className="result-category">{item.category}</span>
             <span className="result-date">{item.date}</span>
-            <span className="result-score">{(item.score * 100).toFixed(1)}%</span>
+            {item.score != null && (
+              <span className="result-score">{(item.score * 100).toFixed(1)}%</span>
+            )}
           </div>
         </li>
       ))}
