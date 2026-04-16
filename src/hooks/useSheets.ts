@@ -6,20 +6,21 @@ import {
   deleteCategory,
   appendRows,
   loadAllData,
+  type Entry,
 } from '../utils/sheets'
 
 const SPREADSHEET_KEY = 'chaekgalpi_spreadsheet_id'
 
-export function useSheets(token) {
-  const [spreadsheetId, setSpreadsheetId] = useState(
-    () => localStorage.getItem(SPREADSHEET_KEY) || null,
+export function useSheets(token: string | null) {
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
+    () => localStorage.getItem(SPREADSHEET_KEY) ?? null,
   )
-  const [categories, setCategories] = useState([])
+  const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState<string | null>(null)
 
-  const handleError = (e) => {
-    setError(e.message)
+  const handleError = (e: unknown) => {
+    setError(e instanceof Error ? e.message : String(e))
     setLoading(false)
   }
 
@@ -50,15 +51,15 @@ export function useSheets(token) {
       const cats = await getCategories(token, spreadsheetId)
       setCategories(cats)
     } catch (e) {
-      setError(e.message)
+      setError(e instanceof Error ? e.message : String(e))
     }
   }, [token, spreadsheetId])
 
   const addCat = useCallback(
-    async (name) => {
+    async (name: string) => {
       setLoading(true)
       try {
-        await addCategory(token, spreadsheetId, name)
+        await addCategory(token!, spreadsheetId!, name)
         await refreshCategories()
       } catch (e) {
         handleError(e)
@@ -70,10 +71,10 @@ export function useSheets(token) {
   )
 
   const deleteCat = useCallback(
-    async (name) => {
+    async (name: string) => {
       setLoading(true)
       try {
-        await deleteCategory(token, spreadsheetId, name)
+        await deleteCategory(token!, spreadsheetId!, name)
         await refreshCategories()
       } catch (e) {
         handleError(e)
@@ -85,17 +86,17 @@ export function useSheets(token) {
   )
 
   const saveEntry = useCallback(
-    async (text, vector, category, tags = []) => {
+    async (text: string, vector: number[], category: string, tags: string[] = []) => {
       const date = new Date().toISOString().split('T')[0]
       const tagsStr = tags.join(',')
-      await appendRows(token, spreadsheetId, category, [[text, JSON.stringify(vector), date, tagsStr]])
+      await appendRows(token!, spreadsheetId!, category, [[text, JSON.stringify(vector), date, tagsStr]])
     },
     [token, spreadsheetId],
   )
 
   const loadAll = useCallback(
-    async (cats) => {
-      return loadAllData(token, spreadsheetId, cats || categories)
+    async (cats?: string[]): Promise<Entry[]> => {
+      return loadAllData(token!, spreadsheetId!, cats ?? categories)
     },
     [token, spreadsheetId, categories],
   )

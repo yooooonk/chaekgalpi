@@ -1,14 +1,20 @@
 import { useState } from 'react'
 
-function normalizeTag(raw) {
+interface SaveFormProps {
+  categories: string[]
+  onSave: (text: string, category: string, tags: string[]) => Promise<void>
+  disabled: boolean
+}
+
+function normalizeTag(raw: string): string {
   return raw.replace(/^#+/, '').trim()
 }
 
-export default function SaveForm({ categories, onSave, disabled }) {
+export default function SaveForm({ categories, onSave, disabled }: SaveFormProps) {
   const [text, setText] = useState('')
   const [tagInput, setTagInput] = useState('')
-  const [tags, setTags] = useState([])
-  const [category, setCategory] = useState(categories[0] || '')
+  const [tags, setTags] = useState<string[]>([])
+  const [category, setCategory] = useState(categories[0] ?? '')
   const [saving, setSaving] = useState(false)
 
   if (categories.length > 0 && !categories.includes(category)) {
@@ -23,8 +29,8 @@ export default function SaveForm({ categories, onSave, disabled }) {
     setTagInput('')
   }
 
-  function handleTagKeyDown(e) {
-    if (e.isComposing || e.nativeEvent?.isComposing) return
+  function handleTagKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.nativeEvent.isComposing) return
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       commitTag()
@@ -33,11 +39,11 @@ export default function SaveForm({ categories, onSave, disabled }) {
     }
   }
 
-  function removeTag(tag) {
+  function removeTag(tag: string) {
     setTags(tags.filter((t) => t !== tag))
   }
 
-  async function handleSubmit(e) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!text.trim() || saving) return
     // 입력 중인 태그도 함께 저장

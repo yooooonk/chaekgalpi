@@ -8,7 +8,15 @@
 
 const BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets'
 
-function authHeader(token) {
+export interface Entry {
+  text: string
+  vector: number[]
+  date: string
+  tags: string[]
+  category: string
+}
+
+function authHeader(token: string): Record<string, string> {
   return { Authorization: `Bearer ${token}` }
 }
 
@@ -17,7 +25,7 @@ function authHeader(token) {
 /**
  * 새 스프레드시트를 생성하고 _meta 시트를 추가한다.
  */
-export async function createSpreadsheet(token) {
+export async function createSpreadsheet(token: string): Promise<string> {
   const res = await fetch(`${BASE_URL}`, {
     method: 'POST',
     headers: { ...authHeader(token), 'Content-Type': 'application/json' },
@@ -33,23 +41,23 @@ export async function createSpreadsheet(token) {
   const data = await res.json()
   // _meta에 헤더 + 첫 카테고리 기록
   await appendRows(token, data.spreadsheetId, '_meta', [['기본']])
-  return data.spreadsheetId
+  return data.spreadsheetId as string
 }
 
 // ─── 카테고리(시트 탭) 관리 ───────────────────────────────────────────────────
 
-export async function getCategories(token, spreadsheetId) {
+export async function getCategories(token: string, spreadsheetId: string): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/${spreadsheetId}?fields=sheets.properties.title`, {
     headers: authHeader(token),
   })
   if (!res.ok) throw new Error(`카테고리 조회 실패: ${res.status}`)
   const data = await res.json()
-  return data.sheets
+  return (data.sheets as Array<{ properties: { title: string } }>)
     .map((s) => s.properties.title)
     .filter((t) => t !== '_meta')
 }
 
-export async function addCategory(token, spreadsheetId, name) {
+export async function addCategory(token: string, spreadsheetId: string, name: string): Promise<void> {
   // 시트 추가
   const res = await fetch(`${BASE_URL}/${spreadsheetId}:batchUpdate`, {
     method: 'POST',
@@ -63,14 +71,15 @@ export async function addCategory(token, spreadsheetId, name) {
   await appendRows(token, spreadsheetId, '_meta', [[name]])
 }
 
-export async function deleteCategory(token, spreadsheetId, name) {
+export async function deleteCategory(token: string, spreadsheetId: string, name: string): Promise<void> {
   // 시트 ID 조회
   const infoRes = await fetch(`${BASE_URL}/${spreadsheetId}?fields=sheets.properties`, {
     headers: authHeader(token),
   })
   if (!infoRes.ok) throw new Error(`시트 정보 조회 실패`)
   const info = await infoRes.json()
-  const sheet = info.sheets.find((s) => s.properties.title === name)
+  const sheet = (info.sheets as Array<{ properties: { title: string; sheetId: number } }>)
+    .find((s) => s.properties.title === name)
   if (!sheet) throw new Error(`"${name}" 카테고리를 찾을 수 없습니다`)
   const sheetId = sheet.properties.sheetId
 
@@ -86,7 +95,12 @@ export async function deleteCategory(token, spreadsheetId, name) {
 
 // ─── 행 읽기/쓰기 ─────────────────────────────────────────────────────────────
 
-export async function appendRows(token, spreadsheetId, sheetName, rows) {
+export async function appendRows(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+  rows: string[][],
+): Promise<void> {
   const range = encodeURIComponent(`${sheetName}!A1`)
   const res = await fetch(
     `${BASE_URL}/${spreadsheetId}/values/${range}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
@@ -99,27 +113,30 @@ export async function appendRows(token, spreadsheetId, sheetName, rows) {
   if (!res.ok) throw new Error(`행 추가 실패: ${res.status}`)
 }
 
-export async function getRows(token, spreadsheetId, sheetName) {
+export async function getRows(
+  token: string,
+  spreadsheetId: string,
+  sheetName: string,
+): Promise<string[][]> {
   const range = encodeURIComponent(`${sheetName}!A:D`)
   const res = await fetch(`${BASE_URL}/${spreadsheetId}/values/${range}`, {
     headers: authHeader(token),
   })
   if (!res.ok) throw new Error(`데이터 조회 실패: ${res.status}`)
   const data = await res.json()
-  return data.values || []
+  return (data.values as string[][] | undefined) ?? []
 }
 
 /**
  * 특정 카테고리의 모든 행을 파싱해 반환
- * @returns {Array<{text, vector, date}>}
  */
-export function parseRows(rows, category) {
+export function parseRows(rows: string[][], category: string): Entry[] {
   return rows
     .filter((r) => r[0] && r[1])
     .map((r) => ({
       text: r[0],
-      vector: JSON.parse(r[1]),
-      date: r[2] || '',
+      vector: JSON.parse(r[1]) as number[],
+      date: r[2] ?? '',
       tags: r[3] ? r[3].split(',').map((t) => t.trim()).filter(Boolean) : [],
       category,
     }))
@@ -128,7 +145,11 @@ export function parseRows(rows, category) {
 /**
  * 모든 카테고리 데이터를 한꺼번에 로드
  */
-export async function loadAllData(token, spreadsheetId, categories) {
+export async function loadAllData(
+  token: string,
+  spreadsheetId: string,
+  categories: string[],
+): Promise<Entry[]> {
   const results = await Promise.all(
     categories.map(async (cat) => {
       const rows = await getRows(token, spreadsheetId, cat)

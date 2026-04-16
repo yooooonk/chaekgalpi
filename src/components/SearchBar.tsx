@@ -1,12 +1,16 @@
 import { useState } from 'react'
 
-export default function SearchBar({ categories, onSearch, disabled }) {
+interface SearchBarProps {
+  categories: string[]
+  onSearch: (query: string, category: string | null) => Promise<void>
+  disabled: boolean
+}
+
+export default function SearchBar({ categories, onSearch, disabled }: SearchBarProps) {
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState('__all__')
 
-  const isTagSearch = query.trim().startsWith('#')
-
-  function handleSubmit(e) {
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!query.trim()) return
     onSearch(query.trim(), category === '__all__' ? null : category)

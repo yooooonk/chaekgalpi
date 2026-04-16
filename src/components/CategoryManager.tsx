@@ -1,10 +1,17 @@
 import { useState } from 'react'
 
-export default function CategoryManager({ categories, onAdd, onDelete, disabled }) {
+interface CategoryManagerProps {
+  categories: string[]
+  onAdd: (name: string) => Promise<void>
+  onDelete: (name: string) => Promise<void>
+  disabled: boolean
+}
+
+export default function CategoryManager({ categories, onAdd, onDelete, disabled }: CategoryManagerProps) {
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
 
-  async function handleAdd(e) {
+  async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
     const name = newName.trim()
     if (!name || adding) return
