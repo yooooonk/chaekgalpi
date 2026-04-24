@@ -22,60 +22,16 @@ function authHeader(token: string): Record<string, string> {
 
 // ─── 스프레드시트 초기화 ─────────────────────────────────────────────────────
 
-const APP_CONFIG_NAME = 'chaekgalpi-config.json'
-const DRIVE_UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart'
-const DRIVE_FILES = 'https://www.googleapis.com/drive/v3/files'
-
 /**
- * appDataFolder에서 스프레드시트 ID를 읽어온다. 없으면 null.
+ * 스프레드시트 URL 또는 ID 문자열에서 ID를 추출한다.
+ * "https://docs.google.com/spreadsheets/d/{ID}/edit" 형식을 처리.
  */
-export async function readConfigFromAppData(token: string): Promise<string | null> {
-  const q = encodeURIComponent(`name='${APP_CONFIG_NAME}'`)
-  const listRes = await fetch(
-    `${DRIVE_FILES}?spaces=appDataFolder&q=${q}&fields=files(id)&pageSize=1`,
-    { headers: authHeader(token) },
-  )
-  if (!listRes.ok) return null
-  const list = await listRes.json()
-  const files = (list.files as Array<{ id: string }> | undefined) ?? []
-  if (files.length === 0) return null
-
-  const contentRes = await fetch(
-    `${DRIVE_FILES}/${files[0].id}?alt=media`,
-    { headers: authHeader(token) },
-  )
-  if (!contentRes.ok) return null
-  const config = await contentRes.json() as { spreadsheetId?: string }
-  return config.spreadsheetId ?? null
-}
-
-/**
- * appDataFolder에 스프레드시트 ID를 저장한다.
- */
-export async function saveConfigToAppData(token: string, spreadsheetId: string): Promise<void> {
-  const boundary = 'chaekgalpi_boundary'
-  const metadata = JSON.stringify({ name: APP_CONFIG_NAME, parents: ['appDataFolder'] })
-  const content = JSON.stringify({ spreadsheetId })
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json',
-    '',
-    metadata,
-    `--${boundary}`,
-    'Content-Type: application/json',
-    '',
-    content,
-    `--${boundary}--`,
-  ].join('\r\n')
-
-  await fetch(DRIVE_UPLOAD, {
-    method: 'POST',
-    headers: {
-      ...authHeader(token),
-      'Content-Type': `multipart/related; boundary=${boundary}`,
-    },
-    body,
-  })
+export function extractSpreadsheetId(input: string): string | null {
+  const match = input.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/)
+  if (match) return match[1]
+  // 이미 ID 형식이면 그대로
+  if (/^[a-zA-Z0-9_-]{20,}$/.test(input.trim())) return input.trim()
+  return null
 }
 
 /**

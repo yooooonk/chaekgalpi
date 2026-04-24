@@ -1,7 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
-  readConfigFromAppData,
-  saveConfigToAppData,
+  extractSpreadsheetId,
   createSpreadsheet,
   getCategories,
   addCategory,
@@ -16,7 +15,9 @@ function spreadsheetKey(userId: string | null) {
 }
 
 export function useSheets(token: string | null, userId: string | null = null) {
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null)
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
+    () => localStorage.getItem(spreadsheetKey(userId)) ?? null,
+  )
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -26,28 +27,48 @@ export function useSheets(token: string | null, userId: string | null = null) {
     setLoading(false)
   }
 
-  // 초기화: localStorage 캐시 → Drive 검색 → 신규 생성 순으로 시트 ID 확보
+  // userId 변경 시 해당 사용자 캐시로 업데이트
+  const getOrCreateId = useCallback(async (): Promise<string> => {
+    const cached = localStorage.getItem(spreadsheetKey(userId))
+    if (cached) return cached
+    const id = await createSpreadsheet(token!)
+    localStorage.setItem(spreadsheetKey(userId), id)
+    return id
+  }, [token, userId])
+
   const init = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      let id = localStorage.getItem(spreadsheetKey(userId))
-      if (!id) {
-        // appDataFolder에서 ID 조회 (다른 브라우저·기기에서 만든 경우 포함)
-        id = await readConfigFromAppData(token)
-        if (!id) {
-          // 최초 사용: 새 시트 생성 후 ID를 appDataFolder에 저장
-          id = await createSpreadsheet(token)
-          await saveConfigToAppData(token, id)
-        }
-        localStorage.setItem(spreadsheetKey(userId), id)
-      }
+      const id = await getOrCreateId()
       setSpreadsheetId(id)
       const cats = await getCategories(token, id)
       setCategories(cats)
     } catch (e) {
       handleError(e)
+    } finally {
+      setLoading(false)
+    }
+  }, [token, getOrCreateId])
+
+  /**
+   * URL 또는 ID를 입력받아 해당 스프레드시트로 연결한다.
+   */
+  const connectById = useCallback(async (input: string) => {
+    if (!token) return
+    const id = extractSpreadsheetId(input)
+    if (!id) throw new Error('올바른 Google Sheets URL 또는 ID를 입력해 주세요.')
+    setLoading(true)
+    setError(null)
+    try {
+      const cats = await getCategories(token, id)
+      localStorage.setItem(spreadsheetKey(userId), id)
+      setSpreadsheetId(id)
+      setCategories(cats)
+    } catch (e) {
+      handleError(e)
+      throw e
     } finally {
       setLoading(false)
     }
@@ -115,6 +136,7 @@ export function useSheets(token: string | null, userId: string | null = null) {
     loading,
     error,
     init,
+    connectById,
     addCat,
     deleteCat,
     saveEntry,

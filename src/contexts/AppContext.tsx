@@ -63,6 +63,7 @@ interface AppContextValue {
   modelStatus: ModelStatus
   loadProgress: LoadProgress | null
   // Sheets
+  spreadsheetId: string | null
   categories: string[]
   sheetsLoading: boolean
   sheetsError: string | null
@@ -70,6 +71,7 @@ interface AppContextValue {
   loadAll: (cats?: string[]) => Promise<Entry[]>
   addCat: (name: string) => Promise<void>
   deleteCat: (name: string) => Promise<void>
+  connectById: (input: string) => Promise<void>
   // Notification
   notification: Notification | null
   notify: (msg: string, type?: 'success' | 'error') => void
@@ -117,7 +119,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .initTokenClient({
         client_id: CLIENT_ID,
         scope:
-          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile',
         callback: (resp: { error?: string; access_token: string }) => {
           if (resp.error) return
           const accessToken = resp.access_token
@@ -158,6 +160,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         embed,
         modelStatus,
         loadProgress,
+        spreadsheetId: sheets.spreadsheetId,
         categories: sheets.categories,
         sheetsLoading: sheets.loading,
         sheetsError: sheets.error,
@@ -165,6 +168,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         loadAll: sheets.loadAll,
         addCat: sheets.addCat,
         deleteCat: sheets.deleteCat,
+        connectById: sheets.connectById,
         notification,
         notify,
       }}
