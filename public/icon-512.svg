@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Warm cream rounded background -->
+  <rect width="512" height="512" rx="144" fill="#fdf8f0"/>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffc24a"/>
+      <stop offset="100%" stop-color="#f0a020"/>
+    </linearGradient>
+  </defs>
+  <!-- Bookmark ribbon: same proportions as favicon scaled to 512 -->
+  <!-- favicon: x=11-21(w=10), y=3-26(h=23), notch at y=22(depth=4), corner r≈2 -->
+  <!-- scale factor: 512/32 = 16 -->
+  <!-- x: 176-336(w=160), y=48-416(h=368), notch at y=352(depth=64), corner r=32 -->
+  <path d="M176 80q0-32 32-32H304q32 0 32 32V416L256 352 176 416Z" fill="url(#g)"/>
+  <!-- Top gloss highlight (same as favicon) -->
+  <path d="M176 80q0-32 32-32H304q32 0 32 32v112c-32 0-160-48-160-112Z" fill="rgba(255,255,255,0.22)"/>
+</svg>
