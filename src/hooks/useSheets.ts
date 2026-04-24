@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react'
 import {
-  findSpreadsheet,
+  readConfigFromAppData,
+  saveConfigToAppData,
   createSpreadsheet,
   getCategories,
   addCategory,
@@ -33,10 +34,12 @@ export function useSheets(token: string | null, userId: string | null = null) {
     try {
       let id = localStorage.getItem(spreadsheetKey(userId))
       if (!id) {
-        // Drive에서 기존 시트 검색 (다른 브라우저·기기에서 만든 경우 포함)
-        id = await findSpreadsheet(token)
+        // appDataFolder에서 ID 조회 (다른 브라우저·기기에서 만든 경우 포함)
+        id = await readConfigFromAppData(token)
         if (!id) {
+          // 최초 사용: 새 시트 생성 후 ID를 appDataFolder에 저장
           id = await createSpreadsheet(token)
+          await saveConfigToAppData(token, id)
         }
         localStorage.setItem(spreadsheetKey(userId), id)
       }

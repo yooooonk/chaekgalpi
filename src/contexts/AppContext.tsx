@@ -117,7 +117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .initTokenClient({
         client_id: CLIENT_ID,
         scope:
-          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.appdata https://www.googleapis.com/auth/userinfo.profile',
         callback: (resp: { error?: string; access_token: string }) => {
           if (resp.error) return
           const accessToken = resp.access_token
