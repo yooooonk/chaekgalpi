@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
 import {
+  findSpreadsheet,
   createSpreadsheet,
   getCategories,
   addCategory,
@@ -9,12 +10,12 @@ import {
   type Entry,
 } from '../utils/sheets'
 
-const SPREADSHEET_KEY = 'chaekgalpi_spreadsheet_id'
+function spreadsheetKey(userId: string | null) {
+  return userId ? `chaekgalpi_spreadsheet_id_${userId}` : 'chaekgalpi_spreadsheet_id'
+}
 
-export function useSheets(token: string | null) {
-  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(
-    () => localStorage.getItem(SPREADSHEET_KEY) ?? null,
-  )
+export function useSheets(token: string | null, userId: string | null = null) {
+  const [spreadsheetId, setSpreadsheetId] = useState<string | null>(null)
   const [categories, setCategories] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -24,18 +25,22 @@ export function useSheets(token: string | null) {
     setLoading(false)
   }
 
-  // 초기화: 스프레드시트 ID 확인 또는 생성
+  // 초기화: localStorage 캐시 → Drive 검색 → 신규 생성 순으로 시트 ID 확보
   const init = useCallback(async () => {
     if (!token) return
     setLoading(true)
     setError(null)
     try {
-      let id = spreadsheetId
+      let id = localStorage.getItem(spreadsheetKey(userId))
       if (!id) {
-        id = await createSpreadsheet(token)
-        localStorage.setItem(SPREADSHEET_KEY, id)
-        setSpreadsheetId(id)
+        // Drive에서 기존 시트 검색 (다른 브라우저·기기에서 만든 경우 포함)
+        id = await findSpreadsheet(token)
+        if (!id) {
+          id = await createSpreadsheet(token)
+        }
+        localStorage.setItem(spreadsheetKey(userId), id)
       }
+      setSpreadsheetId(id)
       const cats = await getCategories(token, id)
       setCategories(cats)
     } catch (e) {
@@ -43,7 +48,7 @@ export function useSheets(token: string | null) {
     } finally {
       setLoading(false)
     }
-  }, [token, spreadsheetId])
+  }, [token, userId])
 
   const refreshCategories = useCallback(async () => {
     if (!token || !spreadsheetId) return

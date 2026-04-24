@@ -41,6 +41,7 @@ function saveAuth(token: string, user: User) {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface User {
+  sub: string
   name: string
   picture: string
 }
@@ -93,7 +94,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notification, setNotification] = useState<Notification | null>(null)
 
   const { embed, modelStatus, loadProgress } = useEmbedder()
-  const sheets = useSheets(token)
+  const sheets = useSheets(token, user?.sub ?? null)
 
   // GSI 스크립트 로드
   useEffect(() => {
@@ -104,10 +105,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => { document.head.removeChild(script) }
   }, [])
 
-  // 토큰 생기면 Sheets 초기화
+  // 토큰과 사용자 ID가 모두 준비되면 Sheets 초기화
   useEffect(() => {
     if (token) sheets.init()
-  }, [token])
+  }, [token, user?.sub])
 
   const login = useCallback(() => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +117,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       .initTokenClient({
         client_id: CLIENT_ID,
         scope:
-          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile',
+          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/drive.metadata.readonly https://www.googleapis.com/auth/userinfo.profile',
         callback: (resp: { error?: string; access_token: string }) => {
           if (resp.error) return
           const accessToken = resp.access_token
@@ -124,8 +125,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             headers: { Authorization: `Bearer ${accessToken}` },
           })
             .then((r) => r.json())
-            .then((info: { name: string; picture: string }) => {
-              const u: User = { name: info.name, picture: info.picture }
+            .then((info: { sub: string; name: string; picture: string }) => {
+              const u: User = { sub: info.sub, name: info.name, picture: info.picture }
               setToken(accessToken)
               setUser(u)
               saveAuth(accessToken, u)
@@ -139,7 +140,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setToken(null)
     setUser(null)
     sessionStorage.removeItem(AUTH_KEY)
-    localStorage.removeItem('chaekgalpi_spreadsheet_id')
   }, [])
 
   const notify = useCallback((msg: string, type: 'success' | 'error' = 'success') => {

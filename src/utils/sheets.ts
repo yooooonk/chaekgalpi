@@ -23,6 +23,24 @@ function authHeader(token: string): Record<string, string> {
 // ─── 스프레드시트 초기화 ─────────────────────────────────────────────────────
 
 /**
+ * Drive에서 '책갈피 데이터' 스프레드시트를 검색해 ID를 반환한다.
+ * 없으면 null.
+ */
+export async function findSpreadsheet(token: string): Promise<string | null> {
+  const q = encodeURIComponent(
+    "name='책갈피 데이터' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false",
+  )
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)&pageSize=1`,
+    { headers: authHeader(token) },
+  )
+  if (!res.ok) return null
+  const data = await res.json()
+  const files = (data.files as Array<{ id: string }> | undefined) ?? []
+  return files.length > 0 ? files[0].id : null
+}
+
+/**
  * 새 스프레드시트를 생성하고 _meta 시트를 추가한다.
  */
 export async function createSpreadsheet(token: string): Promise<string> {
