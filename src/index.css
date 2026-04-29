@@ -51,7 +51,12 @@ body { margin: 0; }
 h1, h2, h3 { margin: 0; font-weight: 700; color: var(--color-text); }
 p { margin: 0; }
 button { cursor: pointer; font-family: inherit; font-size: inherit; }
-input, textarea, select { font-family: inherit; font-size: inherit; }
+input, textarea, select {
+  font-family: inherit;
+  font-size: inherit;
+  /* iOS에서 font-size < 16px이면 포커스 시 자동 확대됨 → 16px 고정 */
+  font-size: max(16px, 1em);
+}
 
 code {
   font-family: ui-monospace, Consolas, monospace;

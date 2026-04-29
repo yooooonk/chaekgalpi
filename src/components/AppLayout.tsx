@@ -1,5 +1,7 @@
+import { useRef } from 'react'
 import { NavLink, Outlet, Navigate } from 'react-router-dom'
 import { useApp } from '../contexts/AppContext'
+import { useSwipeNav } from '../hooks/useSwipeNav'
 import type { ModelStatus, LoadProgress } from '../hooks/useEmbedder'
 
 const NAV_ITEMS = [
@@ -11,6 +13,8 @@ const NAV_ITEMS = [
 
 export default function AppLayout() {
   const { token, user, logout, modelStatus, loadProgress, notification, sheetsError } = useApp()
+  const mainRef = useRef<HTMLElement>(null)
+  useSwipeNav(mainRef)
 
   if (!token) return <Navigate to="/login" replace />
 
@@ -56,7 +60,7 @@ export default function AppLayout() {
         <div className="notification notification-error">{sheetsError}</div>
       )}
 
-      <main className="main">
+      <main ref={mainRef} className="main">
         <Outlet />
       </main>
     </div>
