@@ -355,7 +355,6 @@
   outline: none;
   background: transparent;
   color: var(--color-text);
-  font-size: 14px;
   min-width: 160px;
   flex: 1;
   padding: 2px 0;
