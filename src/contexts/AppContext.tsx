@@ -5,37 +5,39 @@ import type { Entry } from '../utils/sheets'
 
 // ─── Auth persistence ─────────────────────────────────────────────────────────
 
-const AUTH_KEY = 'chaekgalpi_auth'
+const TOKEN_KEY = 'chaekgalpi_token'
+const USER_KEY  = 'chaekgalpi_user'
 const CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined
+const SCOPE = 'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile'
 
-interface StoredAuth {
-  token: string
-  expiresAt: number
-  user: User
-}
+interface StoredToken { token: string; expiresAt: number }
 
-function loadStoredAuth(): StoredAuth | null {
+function loadStoredToken(): string | null {
   try {
-    const raw = sessionStorage.getItem(AUTH_KEY)
+    const raw = localStorage.getItem(TOKEN_KEY)
     if (!raw) return null
-    const auth = JSON.parse(raw) as StoredAuth
-    if (Date.now() >= auth.expiresAt) {
-      sessionStorage.removeItem(AUTH_KEY)
-      return null
-    }
-    return auth
-  } catch {
-    return null
-  }
+    const { token, expiresAt } = JSON.parse(raw) as StoredToken
+    if (Date.now() >= expiresAt) { localStorage.removeItem(TOKEN_KEY); return null }
+    return token
+  } catch { return null }
 }
 
-function saveAuth(token: string, user: User) {
-  const auth: StoredAuth = {
+function loadStoredUser(): User | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY)
+    return raw ? JSON.parse(raw) as User : null
+  } catch { return null }
+}
+
+function saveToken(token: string) {
+  localStorage.setItem(TOKEN_KEY, JSON.stringify({
     token,
-    expiresAt: Date.now() + 55 * 60 * 1000, // 55분 (Google 토큰 만료 1시간 전)
-    user,
-  }
-  sessionStorage.setItem(AUTH_KEY, JSON.stringify(auth))
+    expiresAt: Date.now() + 55 * 60 * 1000,
+  }))
+}
+
+function saveUser(user: User) {
+  localStorage.setItem(USER_KEY, JSON.stringify(user))
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -90,19 +92,44 @@ export function useApp() {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const stored = useRef(loadStoredAuth())
-  const [token, setToken] = useState<string | null>(stored.current?.token ?? null)
-  const [user, setUser] = useState<User | null>(stored.current?.user ?? null)
+  const [token, setToken] = useState<string | null>(() => loadStoredToken())
+  const [user,  setUser]  = useState<User | null>(() => loadStoredUser())
   const [notification, setNotification] = useState<Notification | null>(null)
 
   const { embed, modelStatus, loadProgress } = useEmbedder()
   const sheets = useSheets(token, user?.sub ?? null)
 
-  // GSI 스크립트 로드
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const getGoogle = () => (window as unknown as { google: any }).google
+
+  const applyToken = useCallback((accessToken: string, u: User) => {
+    saveToken(accessToken)
+    saveUser(u)
+    setToken(accessToken)
+    setUser(u)
+  }, [])
+
+  // GSI 스크립트 로드 + 토큰 만료 시 자동 재발급
   useEffect(() => {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
+    script.onload = () => {
+      // 유저 정보는 있으나 토큰이 만료된 경우 → 조용히 재발급
+      if (loadStoredUser() && !loadStoredToken()) {
+        getGoogle().accounts.oauth2.initTokenClient({
+          client_id: CLIENT_ID,
+          scope: SCOPE,
+          prompt: '',
+          callback: (resp: { error?: string; access_token: string }) => {
+            if (!resp.error) {
+              saveToken(resp.access_token)
+              setToken(resp.access_token)
+            }
+          },
+        }).requestAccessToken({ prompt: '' })
+      }
+    }
     document.head.appendChild(script)
     return () => { document.head.removeChild(script) }
   }, [])
@@ -113,13 +140,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [token, user?.sub])
 
   const login = useCallback(() => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const google = (window as unknown as { google: any }).google
-    google.accounts.oauth2
+    getGoogle().accounts.oauth2
       .initTokenClient({
         client_id: CLIENT_ID,
-        scope:
-          'https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/userinfo.profile',
+        scope: SCOPE,
         callback: (resp: { error?: string; access_token: string }) => {
           if (resp.error) return
           const accessToken = resp.access_token
@@ -128,20 +152,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           })
             .then((r) => r.json())
             .then((info: { sub: string; name: string; picture: string }) => {
-              const u: User = { sub: info.sub, name: info.name, picture: info.picture }
-              setToken(accessToken)
-              setUser(u)
-              saveAuth(accessToken, u)
+              applyToken(accessToken, { sub: info.sub, name: info.name, picture: info.picture })
             })
         },
       })
       .requestAccessToken()
-  }, [])
+  }, [applyToken])
 
   const logout = useCallback(() => {
     setToken(null)
     setUser(null)
-    sessionStorage.removeItem(AUTH_KEY)
+    localStorage.removeItem(TOKEN_KEY)
+    localStorage.removeItem(USER_KEY)
   }, [])
 
   const notify = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
