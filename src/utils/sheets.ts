@@ -168,5 +168,5 @@ export async function loadAllData(
       return parseRows(rows, cat)
     }),
   )
-  return results.flat()
+  return results.flat().sort((a, b) => b.date.localeCompare(a.date))
 }
