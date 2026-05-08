@@ -3,7 +3,7 @@
  *
  * 시트 구조:
  *   - "_meta" 탭: A열에 카테고리 이름 목록
- *   - 카테고리 탭: A=문장, B=벡터(JSON), C=날짜, D=해시태그(쉼표 구분)
+ *   - 카테고리 탭: A=문장, B=벡터(JSON), C=날짜, D=해시태그(쉼표 구분), E=출처
  */
 
 const BASE_URL = 'https://sheets.googleapis.com/v4/spreadsheets'
@@ -13,6 +13,7 @@ export interface Entry {
   vector: number[]
   date: string
   tags: string[]
+  source: string
   category: string
 }
 
@@ -130,7 +131,7 @@ export async function getRows(
   spreadsheetId: string,
   sheetName: string,
 ): Promise<string[][]> {
-  const range = encodeURIComponent(`${sheetName}!A:D`)
+  const range = encodeURIComponent(`${sheetName}!A:E`)
   const res = await fetch(`${BASE_URL}/${spreadsheetId}/values/${range}`, {
     headers: authHeader(token),
   })
@@ -150,6 +151,7 @@ export function parseRows(rows: string[][], category: string): Entry[] {
       vector: JSON.parse(r[1]) as number[],
       date: r[2] ?? '',
       tags: r[3] ? r[3].split(',').map((t) => t.trim()).filter(Boolean) : [],
+      source: r[4] ?? '',
       category,
     }))
 }

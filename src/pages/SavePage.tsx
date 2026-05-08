@@ -5,14 +5,14 @@ export default function SavePage() {
   const { embed, modelStatus, saveEntry, categories, sheetsLoading, notify } = useApp()
   const busy = modelStatus !== 'ready' || sheetsLoading
 
-  async function handleSave(text: string, category: string, tags: string[]) {
+  async function handleSave(text: string, category: string, tags: string[], source: string) {
     if (modelStatus !== 'ready') {
       notify('모델 로딩 중입니다. 잠시 후 다시 시도하세요.', 'error')
       return
     }
     try {
       const vector = await embed(text, 'passage')
-      await saveEntry(text, vector, category, tags)
+      await saveEntry(text, vector, category, tags, source)
       notify(`"${category}"에 저장했습니다.`)
     } catch (e) {
       notify((e as Error).message, 'error')

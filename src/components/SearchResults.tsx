@@ -42,6 +42,7 @@ export default function SearchResults({ results, searching }: SearchResultsProps
               {item.matchType === 'tag' && <span className="result-badge badge-tag">태그</span>}
               {item.matchType === 'keyword' && <span className="result-badge badge-keyword">키워드</span>}
               <span className="result-category">{item.category}</span>
+              {item.source && <span className="result-source">— {item.source}</span>}
               <span className="result-date">{item.date}</span>
               {item.score != null && (
                 <span className="result-score">{(item.score * 100).toFixed(1)}%</span>

@@ -2,7 +2,7 @@ import { useState } from 'react'
 
 interface SaveFormProps {
   categories: string[]
-  onSave: (text: string, category: string, tags: string[]) => Promise<void>
+  onSave: (text: string, category: string, tags: string[], source: string) => Promise<void>
   disabled: boolean
 }
 
@@ -12,6 +12,7 @@ function normalizeTag(raw: string): string {
 
 export default function SaveForm({ categories, onSave, disabled }: SaveFormProps) {
   const [text, setText] = useState('')
+  const [source, setSource] = useState('')
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [category, setCategory] = useState(categories[0] ?? '')
@@ -43,18 +44,18 @@ export default function SaveForm({ categories, onSave, disabled }: SaveFormProps
     setTags(tags.filter((t) => t !== tag))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (!text.trim() || saving) return
-    // 입력 중인 태그도 함께 저장
     const finalTags = [...tags]
     const pending = normalizeTag(tagInput)
     if (pending && !finalTags.includes(pending)) finalTags.push(pending)
 
     setSaving(true)
     try {
-      await onSave(text.trim(), category, finalTags)
+      await onSave(text.trim(), category, finalTags, source.trim())
       setText('')
+      setSource('')
       setTagInput('')
       setTags([])
     } finally {
@@ -70,6 +71,14 @@ export default function SaveForm({ categories, onSave, disabled }: SaveFormProps
         onChange={(e) => setText(e.target.value)}
         placeholder="저장할 문장을 입력하세요"
         rows={4}
+        disabled={disabled || saving}
+      />
+      <input
+        className="search-input"
+        type="text"
+        value={source}
+        onChange={(e) => setSource(e.target.value)}
+        placeholder="출처 (책 제목, URL 등)"
         disabled={disabled || saving}
       />
       <div className="tag-input-box">

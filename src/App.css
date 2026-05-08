@@ -477,6 +477,12 @@
   align-items: center;
 }
 
+.result-source {
+  color: var(--color-text-muted);
+  font-style: italic;
+  font-size: 12px;
+}
+
 .result-score {
   margin-left: auto;
   font-weight: 700;

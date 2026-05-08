@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react'
+import { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { useEmbedder, type ModelStatus, type LoadProgress } from '../hooks/useEmbedder'
 import { useSheets } from '../hooks/useSheets'
 import type { Entry } from '../utils/sheets'
@@ -69,7 +69,7 @@ interface AppContextValue {
   categories: string[]
   sheetsLoading: boolean
   sheetsError: string | null
-  saveEntry: (text: string, vector: number[], category: string, tags?: string[]) => Promise<void>
+  saveEntry: (text: string, vector: number[], category: string, tags?: string[], source?: string) => Promise<void>
   loadAll: (cats?: string[]) => Promise<Entry[]>
   addCat: (name: string) => Promise<void>
   deleteCat: (name: string) => Promise<void>

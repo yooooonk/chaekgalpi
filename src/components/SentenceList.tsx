@@ -95,6 +95,9 @@ export default function SentenceList({ categories, onLoad }: SentenceListProps) 
                       {selectedCat === '__all__' && (
                         <span className="result-category">{item.category}</span>
                       )}
+                      {item.source && (
+                        <span className="result-source">— {item.source}</span>
+                      )}
                       <span className="result-date">{item.date}</span>
                     </div>
                   </div>
