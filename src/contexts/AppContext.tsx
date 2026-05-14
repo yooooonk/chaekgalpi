@@ -114,24 +114,35 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const script = document.createElement('script')
     script.src = 'https://accounts.google.com/gsi/client'
     script.async = true
-    script.onload = () => {
-      // 유저 정보는 있으나 토큰이 만료된 경우 → 조용히 재발급
-      if (loadStoredUser() && !loadStoredToken()) {
-        getGoogle().accounts.oauth2.initTokenClient({
-          client_id: CLIENT_ID,
-          scope: SCOPE,
-          prompt: '',
-          callback: (resp: { error?: string; access_token: string }) => {
-            if (!resp.error) {
-              saveToken(resp.access_token)
-              setToken(resp.access_token)
-            }
-          },
-        }).requestAccessToken({ prompt: '' })
-      }
+
+    let refreshInterval: ReturnType<typeof setInterval> | null = null
+
+    const silentRefresh = () => {
+      if (!loadStoredUser()) return
+      getGoogle().accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPE,
+        prompt: '',
+        callback: (resp: { error?: string; access_token: string }) => {
+          if (!resp.error) {
+            saveToken(resp.access_token)
+            setToken(resp.access_token)
+          }
+        },
+      }).requestAccessToken({ prompt: '' })
     }
+
+    script.onload = () => {
+      if (loadStoredUser() && !loadStoredToken()) silentRefresh()
+      // 앱이 열려있는 동안 50분마다 자동 갱신
+      refreshInterval = setInterval(silentRefresh, 50 * 60 * 1000)
+    }
+
     document.head.appendChild(script)
-    return () => { document.head.removeChild(script) }
+    return () => {
+      document.head.removeChild(script)
+      if (refreshInterval) clearInterval(refreshInterval)
+    }
   }, [])
 
   // 토큰과 사용자 ID가 모두 준비되면 Sheets 초기화
